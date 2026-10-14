@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/clifford-math",
+    "crates/clifford-nn",
+    "crates/clifford-net",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+authors = ["akshit <akshitcasual1@gmail.com>"]
