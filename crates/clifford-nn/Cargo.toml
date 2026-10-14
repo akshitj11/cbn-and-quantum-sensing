@@ -1,0 +1,13 @@
+[package]
+name = "clifford-nn"
+version = "0.1.0"
+description = "Tiny Clifford linear layers and synthetic flow data"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+clifford-math = { path = "../clifford-math" }
+
+[dev-dependencies]
+approx = "0.5"
