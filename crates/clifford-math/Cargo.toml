@@ -1,0 +1,12 @@
+[package]
+name = "clifford-math"
+version = "0.1.0"
+description = "Cl(2,0) multivectors and rotors for learning geometric algebra"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+approx = "0.5"
