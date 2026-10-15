@@ -6,6 +6,7 @@ use clifford_math::{
 
 pub use clifford_math;
 
+pub mod models;
 pub mod nbody;
 
 /// One grid cell: scalar + 2D velocity encoded as multivector (no bivector in raw data).
