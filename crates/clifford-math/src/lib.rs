@@ -154,6 +154,38 @@ pub fn geometric_product(a: Multivector2, b: Multivector2) -> Multivector2 {
     }
 }
 
+/// Vector-Jacobian product for the geometric product in Cl(2,0).
+///
+/// Given `c = geometric_product(a, b)` and an upstream gradient `grad = dL/dc`
+/// (as a multivector of the four component derivatives), returns
+/// `(dL/da, dL/db)`. The geometric product is bilinear, so each operand's
+/// gradient is a fixed linear map of the other operand and the upstream grad.
+pub fn gp_vjp(
+    a: Multivector2,
+    b: Multivector2,
+    grad: Multivector2,
+) -> (Multivector2, Multivector2) {
+    let (a0, a1, a2, a12) = (a.s, a.e1, a.e2, a.e12);
+    let (b0, b1, b2, b12) = (b.s, b.e1, b.e2, b.e12);
+    let (gs, g1, g2, g12) = (grad.s, grad.e1, grad.e2, grad.e12);
+
+    let grad_a = Multivector2 {
+        s: gs * b0 + g1 * b1 + g2 * b2 + g12 * b12,
+        e1: gs * b1 + g1 * b0 + g2 * b12 + g12 * b2,
+        e2: gs * b2 - g1 * b12 + g2 * b0 - g12 * b1,
+        e12: -gs * b12 + g1 * b2 - g2 * b1 + g12 * b0,
+    };
+
+    let grad_b = Multivector2 {
+        s: gs * a0 + g1 * a1 + g2 * a2 + g12 * a12,
+        e1: gs * a1 + g1 * a0 - g2 * a12 - g12 * a2,
+        e2: gs * a2 + g1 * a12 + g2 * a0 + g12 * a1,
+        e12: -gs * a12 - g1 * a2 + g2 * a1 + g12 * a0,
+    };
+
+    (grad_a, grad_b)
+}
+
 /// Unit rotor from angle θ (rotation in the e1-e2 plane): cos(θ/2) + sin(θ/2) e12.
 pub fn rotor_from_angle(theta: f32) -> Multivector2 {
     let half = theta * 0.5;
@@ -206,6 +238,44 @@ mod tests {
         let (rx, ry) = rotate_vector2(1.0, 0.0, theta);
         assert_relative_eq!(rx, theta.cos(), epsilon = 1e-5);
         assert_relative_eq!(ry, theta.sin(), epsilon = 1e-5);
+    }
+
+    #[test]
+    fn gp_vjp_matches_finite_difference() {
+        let a = Multivector2::from_coeffs([0.3, -1.1, 0.7, 0.4]);
+        let b = Multivector2::from_coeffs([-0.2, 0.9, 1.3, -0.6]);
+        // Arbitrary upstream gradient on the output components.
+        let grad = Multivector2::from_coeffs([0.5, -0.3, 0.8, 0.1]);
+        let (grad_a, grad_b) = gp_vjp(a, b, grad);
+
+        let eps = 1e-4;
+        // Scalar loss L = <grad, GP(a,b)> (component-wise dot).
+        let loss = |a: Multivector2, b: Multivector2| -> f32 {
+            let c = geometric_product(a, b);
+            let g = grad.as_coeffs();
+            let cc = c.as_coeffs();
+            (0..4).map(|i| g[i] * cc[i]).sum()
+        };
+
+        for k in 0..4 {
+            let mut ap = a.as_coeffs();
+            let mut am = a.as_coeffs();
+            ap[k] += eps;
+            am[k] -= eps;
+            let fd = (loss(Multivector2::from_coeffs(ap), b)
+                - loss(Multivector2::from_coeffs(am), b))
+                / (2.0 * eps);
+            assert_relative_eq!(grad_a.as_coeffs()[k], fd, epsilon = 1e-3);
+
+            let mut bp = b.as_coeffs();
+            let mut bm = b.as_coeffs();
+            bp[k] += eps;
+            bm[k] -= eps;
+            let fd = (loss(a, Multivector2::from_coeffs(bp))
+                - loss(a, Multivector2::from_coeffs(bm)))
+                / (2.0 * eps);
+            assert_relative_eq!(grad_b.as_coeffs()[k], fd, epsilon = 1e-3);
+        }
     }
 
     #[test]
