@@ -6,6 +6,7 @@ use clifford_math::{
 
 pub use clifford_math;
 
+pub mod eval;
 pub mod models;
 pub mod nbody;
 
