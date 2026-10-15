@@ -1,8 +1,8 @@
 //! Train CliffordLinear on one-step rotation flow prediction.
 
 use clifford_nn::{
-    field_as_single_channel_batch, rotation_flow_field, rotation_flow_step, train_clifford_linear_fd,
-    CliffordLinear, mse_vector,
+    field_as_single_channel_batch, mse_vector, rotation_flow_field, rotation_flow_step,
+    train_clifford_linear_fd, CliffordLinear,
 };
 
 fn main() {
