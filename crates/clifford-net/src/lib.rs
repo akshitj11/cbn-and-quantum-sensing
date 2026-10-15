@@ -45,6 +45,30 @@ pub fn average_snapshots(a: &StateSnapshot, b: &StateSnapshot) -> StateSnapshot 
     }
 }
 
+/// Elementwise mean of many snapshots (all same shape). Panics if empty.
+pub fn average_many(snaps: &[StateSnapshot]) -> StateSnapshot {
+    assert!(
+        !snaps.is_empty(),
+        "average_many needs at least one snapshot"
+    );
+    let len = snaps[0].weight_coeffs.len();
+    let mut acc = vec![0.0f32; len];
+    for s in snaps {
+        assert_eq!(s.weight_coeffs.len(), len, "snapshot shape mismatch");
+        for (a, w) in acc.iter_mut().zip(s.weight_coeffs.iter()) {
+            *a += *w;
+        }
+    }
+    let inv = 1.0 / snaps.len() as f32;
+    for a in acc.iter_mut() {
+        *a *= inv;
+    }
+    StateSnapshot {
+        round: snaps.iter().map(|s| s.round).max().unwrap() + 1,
+        weight_coeffs: acc,
+    }
+}
+
 /// In-process federated round: each node mutates coeffs locally, then mean-sync.
 pub fn federated_round(
     local_a: &mut CliffordLinear,
@@ -73,6 +97,32 @@ mod tests {
         let bytes = snap.encode();
         let decoded = StateSnapshot::decode(&bytes);
         assert_eq!(snap, decoded);
+    }
+
+    #[test]
+    fn average_many_matches_pairwise() {
+        let mut a = CliffordLinear::new(1, 2);
+        let mut b = CliffordLinear::new(1, 2);
+        let mut cb = b.weight_coeffs();
+        for (i, v) in cb.iter_mut().enumerate() {
+            *v += i as f32 * 0.1;
+        }
+        b.set_weight_coeffs(&cb);
+        let snaps = [
+            StateSnapshot::from_layer(&a, 0),
+            StateSnapshot::from_layer(&b, 0),
+        ];
+        let merged = average_many(&snaps);
+        let pair = average_snapshots(&snaps[0], &snaps[1]);
+        for i in 0..merged.weight_coeffs.len() {
+            assert_relative_eq!(
+                merged.weight_coeffs[i],
+                pair.weight_coeffs[i],
+                epsilon = 1e-6
+            );
+        }
+        // silence unused mut warnings
+        a.set_weight_coeffs(&a.weight_coeffs());
     }
 
     #[test]
