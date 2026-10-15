@@ -6,6 +6,8 @@ use clifford_math::{
 
 pub use clifford_math;
 
+pub mod nbody;
+
 /// One grid cell: scalar + 2D velocity encoded as multivector (no bivector in raw data).
 pub fn encode_scalar_vector(scalar: f32, vx: f32, vy: f32) -> Multivector2 {
     Multivector2::from_scalar_vector(scalar, vx, vy)
