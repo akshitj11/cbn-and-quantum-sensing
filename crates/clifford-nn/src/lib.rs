@@ -7,6 +7,7 @@ use clifford_math::{
 pub use clifford_math;
 
 pub mod eval;
+pub mod mag_eval;
 pub mod mag_models;
 pub mod magnetometer;
 pub mod models;
