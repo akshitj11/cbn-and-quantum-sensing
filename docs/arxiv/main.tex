@@ -1,0 +1,281 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+\title{Clifford networks do not improve Ramsey sensitivity}
+
+\author{Akshit\thanks{Code: \url{https://github.com/akshitj11/clifford-based-network}.
+Correspondence: \texttt{akshitcasual1@gmail.com}.}}
+
+\date{October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A Clifford layer does not improve quantum sensitivity.
+On a simulated planar Ramsey magnetometer it matches a least-squares inversion of the known likelihood, sits on the Cram\'er--Rao bound at 512 shots ($\mathrm{rms}/\sqrt{\mathrm{CRB}}\approx 0.99$), and loses to a plain linear net on hard-iron / soft-iron calibration.
+The one place it is decisive is the product a vector sensor already computes, $(\mathrm{readout}-\tfrac12)\times\mathrm{axis}$.
+Given the raw pieces and not the product, a 68-parameter $\mathrm{Cl}(2,0)$ net is at the noise floor with 20 labeled fields (field MSE $\approx 0.002$).
+A parameter-matched $\tanh$ MLP is still at $0.32$ after 500 fields.
+That is a decoder result.
+The qubit does not get quieter.
+\end{abstract}
+
+\section{The claim}
+
+Sensing is the extraction of a field $B$ from shots~\citep{degen2017,helstrom1969}.
+On a single-fringe Ramsey protocol that extraction is already solved by $\arcsin$ and a $2\times 2$ solve~\citep{ramsey1950,taylor2008}.
+A network that matches that solve has inverted the record.
+It has not improved the sensor.
+
+Clifford (geometric-algebra) layers are a natural candidate for the decoder anyway.
+A magnetic field is a grade-1 object.
+A vector magnetometer reports it in the sensor frame, so a platform rotation $R$ sends $B\mapsto RB$ and the measurement axes with it.
+The geometric product respects that action: $R(ab)\tilde R=(Ra\tilde R)(Rb\tilde R)$~\citep{doran2003,ruhe2023cgenn}.
+Spin-$\tfrac12$ precession is a rotor in $\mathrm{Cl}(3,0)$.
+This note stays in $\mathrm{Cl}(2,0)$.
+A 3D Bloch magnetometer is a later algebra, not a better first measurement.
+
+Machine-learning inverses for atomic and NV magnetometers already exist~\citep{liu2023,zhang2024}.
+Equivariant and physics-informed nets for platform magnetometry exist too.
+Clifford networks have been shown on $n$-body, fluids, and Lorentz-equivariant HEP~\citep{ruhe2023gcan,ruhe2023cgenn,brandstetter2023}.
+What is thin is the combination: a Clifford layer, a Ramsey likelihood, a classical estimator, and a Cram\'er--Rao number on the same simulated shots.
+That is the measurement this note reports.
+
+The first sweep is a tie by construction.
+Once any model is handed the vector observation $v_k=(P_k-\tfrac12)u_k$, every estimator is doing the same linear inversion.
+The architectures only come apart when that product is taken away, or when the classical fit believes the wrong sensor.
+
+\section{Protocol}
+
+A spin-$\tfrac12$ runs a Ramsey sequence along each of $m=6$ unit axes $u_k$, biased to the steepest point of the fringe (control phase $-\pi/2$):
+\begin{align}
+\phi_k &= \gamma T\,(B\cdot u_k),\\
+P_k &= \tfrac12\bigl(1+V\sin\phi_k\bigr)+\mathrm{noise},\qquad
+V=\exp(-T/T_2).
+\end{align}
+Default numbers: $\gamma=1$, $T=1$, $T_2=5$ so $V\approx 0.82$, Gaussian readout $\sigma=0.02$ unless replaced by binomial shot noise.
+Fields are drawn uniformly in the disk $|B|\le 0.8$, which keeps $|\phi|\le 0.8\,\mathrm{rad}$.
+$\sin$ is monotonic there.
+The record is invertible.
+That is the regime in which least squares is allowed to be strong~\citep{taylor2008,maze2008}.
+
+An optional device defect is applied before projection,
+$B_{\mathrm{eff}}=\mathrm{diag}(s)B+h$,
+with soft-iron gain $s$ (default $(1,1)$) and hard-iron bias $h$ (default $0$).
+This is the usual hard-iron / soft-iron (Tolles--Lawson) distortion of a vector magnetometer.
+Defects are a property of the sensor, constant across samples.
+Fields and orientations vary.
+
+The classical estimator inverts the fringe,
+\begin{equation}
+\mathrm{proj}_k=\arcsin\bigl(\mathrm{clip}((2P_k-1)/V)\bigr)/(\gamma T),
+\end{equation}
+and solves the $2\times 2$ normal equations for $B_{\mathrm{eff}}$.
+An oracle then undoes the true $(s,h)$.
+A naive fit assumes $s=1$, $h=0$, and the nominal $T_2$.
+
+Learned models share one topology: a shared per-axis message, a sum over the six axes, a shared update that reads a 2D field.
+\texttt{CliffordMag} carries $\mathrm{Cl}(2,0)$ multivector channels through geometric products.
+\texttt{FlatMag} is a parameter-matched real linear net ($68$ vs $70$ scalars).
+Training is full-batch analytic SGD, $400$ epochs, learning rate $0.1$, three seeds unless noted.
+The stack is CPU-only Rust, single-threaded, hand-written geometric-product VJPs, splitmix64 data.
+A sweep finishes in minutes.
+
+Field MSE is the mean of $(\Delta B_x)^2+(\Delta B_y)^2$ on $500$ held-out samples.
+RMS field error is its square root.
+Equivariance error is the RMS gap between rotating the estimate and estimating on the rotated apparatus.
+
+\section{Clean inversion is a tie}
+
+On the default Gaussian protocol, least squares, Clifford, and flat all report field MSE $\approx 0.00191$ on the held-out set.
+At $1000$ training fields the two nets are $0.001877$ (mean over seeds).
+That is the readout-noise floor of this protocol, not a model ranking.
+
+The slope of the fringe near zero field is $dP/dB\approx\tfrac12 V\approx 0.41$.
+$\sigma=0.02$ is then about $0.05$ of field error on one axis.
+Six axes, least-squares combined, put the two-component MSE near $0.0016$ in the linear approximation.
+The measured $0.00191$ is a little worse because $\sin$ flattens at larger phase and $T_2$ has already cut $18\%$ of the contrast.
+
+What splits the nets is rotation, not accuracy.
+At $N=1000$, equivariance error is $0.00092$ (Clifford) versus $0.00152$ (flat).
+At $N=100$ the same gap is $0.0044$ versus $0.0067$.
+The classical inversion is at $6\times 10^{-8}$.
+Clifford is the closer of the two learned models to the group action.
+It is not a more accurate field estimate.
+
+\section{A wrong classical model is beatable. Geometry is not why.}
+
+A real device has a bias, a gain, and a $T_2$ you do not know exactly.
+The honest baseline is a lab fit that assumes an ideal sensor.
+
+Defect level $d$ sets
+$h=(0.2d,-0.15d)$,
+$s=(1+0.3d,\,1-0.2d)$,
+$T_2=5(1-0.2d)$,
+and the naive fit still believes $h=0$, $s=1$, $T_2=5$.
+
+\begin{table}[h]
+\centering
+\caption{Held-out field MSE versus defect level $d$. Oracle least squares is given the true $(s,h,T_2)$.}
+\label{tab:misspec}
+\begin{tabular}{lcccc}
+\toprule
+$d$ & naive LS & oracle LS & Clifford & flat \\
+\midrule
+$0.0$ & $0.00191$ & $0.00191$ & $0.00188$ & $0.00188$ \\
+$0.5$ & $0.0221$  & $0.00199$ & $0.00611$ & $0.00207$ \\
+$1.0$ & $0.0761$  & $0.00240$ & $0.0171$  & $0.00278$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $d=1$ the naive fit is about $40\times$ the noise floor.
+The oracle is essentially back on the floor.
+The flat net tracks the oracle ($0.00278$).
+Clifford beats the naive fit ($0.017$ versus $0.076$) and loses to the flat net by about $6\times$.
+
+The defect is a world-frame diagonal scale plus an offset.
+That is not a rotor.
+A linear map on $v_k$ plus a constant channel can absorb $s$ and $h$.
+The flat net does that.
+Learned models beat a misspecified likelihood.
+The architecture that won is the one without geometric structure.
+
+Equivariance error rises with $d$ for every estimator that tries to undo the defect ($0.30$ for the oracle at $d=1$).
+Soft-iron in world axes breaks the rotation symmetry of the record.
+The naive fit stays numerically ``equivariant'' because it is consistently wrong in a rotation-covariant way.
+
+\section{Take the product away}
+
+\texttt{CliffordMag} and \texttt{FlatMag} were handed $v_k=(P_k-\tfrac12)u_k$.
+A single linear layer can finish the job.
+That is why they tied at $N=100$.
+
+\texttt{CliffordMagRaw} is given two separate channels, $\mathrm{scalar}(P_k-\tfrac12)$ and $\mathrm{vector}(u_k)$, and forms the observable with one geometric product.
+No weights in that product.
+The rest of the net is the same $68$-parameter message/update pair.
+\texttt{FlatMlpMag} sees $[P_k-\tfrac12,\,u_x,\,u_y]$ through a $\tanh$ hidden layer ($67$ parameters) and has to learn the bilinear map.
+Five seeds, $600$ epochs, training sizes $20/50/100/500$.
+
+\begin{table}[h]
+\centering
+\caption{Field MSE when the model must form $(P-\tfrac12)u$ itself. Mean $\pm$ std over five seeds.}
+\label{tab:efficiency}
+\begin{tabular}{lcc}
+\toprule
+$N$ & Clifford raw & $\tanh$ MLP \\
+\midrule
+$20$  & $0.00196\pm 0.00004$ & $0.432\pm 0.057$ \\
+$50$  & $0.00195\pm 0.00005$ & $0.353\pm 0.022$ \\
+$100$ & $0.00192\pm 0.00003$ & $0.332\pm 0.006$ \\
+$500$ & $0.00188\pm 0.00001$ & $0.323\pm 0.002$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$0.32$ is the MSE of a model that predicts near-zero field on this disk.
+The MLP never forms the product in this budget.
+Clifford is on the floor at the first point in the sweep.
+Equivariance follows the same split.
+At $N=20$, Clifford is $0.004$--$0.010$; the MLP is $0.18$--$0.40$.
+At $N=500$, Clifford is $0.0002$--$0.002$; the MLP is still $0.02$--$0.06$.
+
+The geometric product is the map the sensor physics already uses.
+A generic nonlinearity of the same width does not find it from a few hundred examples.
+There is no crossover in the range we ran.
+Saying the gap closes as $N$ grows would be a prediction, not a measurement.
+A wider MLP, an explicit multiply, or a kernel would be a stronger baseline.
+Those are not in this sweep.
+
+\section{Shot noise against the bound}
+
+Gaussian $\sigma$ is a convenience.
+A projective readout of $n$ shots is a binomial count.
+Fisher information for this Ramsey model, per axis, is
+\begin{align}
+\frac{dP}{dB_{\mathrm{proj}}}&=\tfrac12 V\gamma T\cos\phi_k,\\
+\mathrm{Var}(\hat P)&=P_k(1-P_k)/n,\\
+F&=\sum_k \frac{(dP/dB)(dP/dB)^\top}{\mathrm{Var}_k},\qquad
+\mathrm{CRB}=\mathrm{tr}(F^{-1}).
+\end{align}
+The figure that should travel is $\mathrm{rms}/\sqrt{\mathrm{CRB}}$, plus the shot-scaled sensitivity $\gamma T\sqrt{n}\cdot\mathrm{rms}$~\citep{degen2017,helstrom1969}.
+A ratio near $1$ means the estimator used the shots.
+A ratio of $0.5$ would be a claim of super-classical information and a reason to stop and find the bug.
+
+\begin{table}[h]
+\centering
+\caption{RMS field error versus $\sqrt{\mathrm{CRB}}$ under binomial readout.}
+\label{tab:shots}
+\begin{tabular}{lcccccc}
+\toprule
+$n$ & class.\ rms & Cliff.\ rms & flat rms & $\sqrt{\mathrm{CRB}}$ & class./bnd & Cliff./bnd \\
+\midrule
+$32$  & $0.192$  & $0.169$  & $0.169$  & $0.182$  & $1.056$ & $0.929$ \\
+$128$ & $0.0925$ & $0.0898$ & $0.0899$ & $0.0910$ & $1.016$ & $0.987$ \\
+$512$ & $0.0448$ & $0.0449$ & $0.0449$ & $0.0454$ & $0.986$ & $0.988$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Error scales as $1/\sqrt{n}$.
+Sixteen times more shots ($32\to 512$) cut RMS by about four ($0.192\to 0.045$).
+Sensitivity sits at $1.01$--$1.09$ in these units.
+At $512$ shots all three estimators are on the bound.
+
+At $32$ shots the nets sit about $7\%$ under the unbiased CRB.
+The Cram\'er--Rao statement is for unbiased estimators~\citep{helstrom1969}.
+A net trained on MSE shrinks toward the mean of the training disk.
+That can beat an unbiased bound on squared error without extracting more information than the likelihood contains.
+The classical inversion stays just above the bound ($1.056$), which is the shape you want from a correctly derived Fisher matrix.
+
+Nobody here improved the sensor.
+They used the shots.
+
+\section{What is allowed}
+
+On a known Ramsey likelihood, a Clifford net is an efficient function class for the inverse, not a better estimator than least squares.
+When the inverse requires multiplying a scalar readout onto a direction, that product is cheap in $\mathrm{Cl}(2,0)$ and expensive for a small flat MLP.
+When the inverse requires undoing a world-frame gain and bias, a flat net is the better function class.
+Under binomial readout, both nets match the Cram\'er--Rao scaling.
+Sensitivity is set by $n$, $V$, and $T$, not by the layer type.
+
+The claim that does not survive: that a Clifford network is an upgrade to quantum sensing.
+
+Simulation only.
+There is no NV-center, fluxgate, or SQUID dataset in the repository.
+Noise and $T_2$ are modeled; they are not measured.
+The sensor is an ideal planar vector magnetometer.
+An NV-center has fixed crystal axes~\citep{zhang2024}.
+Full rotation equivariance does not hold for that device.
+You would pass the axes in as data, which this model already does, and you would stop claiming the network is equivariant by construction.
+
+The operating point stays inside one fringe.
+Multiple evolution times, phase wrapping, and adaptive Ramsey are out of scope.
+Those are the regimes where a learned inverse sometimes earns its keep against a misspecified or multimodal likelihood.
+They are also the regimes where a classical estimator has to become a proper maximum-likelihood search, not a $2\times 2$ solve.
+
+$\mathrm{Cl}(3,0)$ is not implemented.
+A 3D Bloch magnetometer on the same easy inverse would reproduce the clean-data tie.
+It becomes interesting only after the product-removal and shot-noise tests are restated in 3D.
+
+Reproduce with
+\texttt{cargo test} and the four release binaries
+\texttt{train\_magnetometer},
+\texttt{train\_mag\_misspec},
+\texttt{train\_mag\_efficiency},
+\texttt{train\_mag\_shots}.
+CSVs land in \texttt{results/}.
+
+The next measurement that could still change the story is not ``add $\mathrm{Cl}(3,0)$ and rerun the easy inverse.''
+It is a wrapped-fringe, multi-$T$ protocol, or a real vector-magnetometer log, with the same three estimators and the same refusal to call a noise-floor tie a sensing win.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
