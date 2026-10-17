@@ -60,3 +60,4 @@ cargo run -p clifford-nn --release --bin train_mag_shots       # writes results/
 
 - [Glossary](docs/00-glossary.md)
 - [Clifford vs usual](docs/clifford-vs-usual.md)
+- [Magnetometer whitepaper](docs/clifford-magnetometer-whitepaper.md)
