@@ -7,6 +7,7 @@ use clifford_math::{
 pub use clifford_math;
 
 pub mod eval;
+pub mod magnetometer;
 pub mod models;
 pub mod nbody;
 
