@@ -1,5 +1,8 @@
 # Clifford networks on qubit magnetometry
 
+An arXiv-shaped LaTeX draft of this note lives in
+[`docs/arxiv/`](arxiv/README.md). It is not submitted.
+
 A Clifford layer does not improve quantum sensitivity. On a simulated planar Ramsey magnetometer it matches a least-squares inversion of the known likelihood, saturates the Cramér–Rao bound at 512 shots (`rms / √CRB ≈ 0.99`), and loses to a plain linear net when the job is hard-iron / soft-iron calibration. The one place it is decisive is the product a vector sensor actually computes: `(readout − ½) × axis`. Given the raw pieces and not the product, a 68-parameter Cl(2,0) net is at the noise floor with 20 labeled fields (`field MSE ≈ 0.002`). A parameter-matched tanh MLP is still at `0.32` after 500 fields.
 
 That is a decoder result, not a sensing result. The qubit does not get quieter. The map from a directed measurement to a field vector gets cheaper to learn.
