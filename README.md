@@ -38,6 +38,11 @@ classical baseline, idealized planar vector sensor (NV-center crystal axes would
 break full equivariance), and a literature pass is required before any novelty
 claim.
 
+Three follow-on experiments take the stream off the readout-noise floor:
+misspecified classical (sensor defects), data-efficiency when the model must
+form the observable, and binomial shot noise vs the Cramer-Rao bound. See the
+design doc.
+
 ## Quick start
 
 ```bash
@@ -46,6 +51,9 @@ cargo run -p clifford-nn --bin train_flow
 cargo run -p clifford-nn --release --bin train_nbody           # writes results/nbody_sweep.csv
 cargo run -p clifford-net --release --bin federated_nbody      # federated vs single-node
 cargo run -p clifford-nn --release --bin train_magnetometer    # writes results/magnetometer_sweep.csv
+cargo run -p clifford-nn --release --bin train_mag_misspec     # writes results/mag_misspec.csv
+cargo run -p clifford-nn --release --bin train_mag_efficiency  # writes results/mag_efficiency.csv
+cargo run -p clifford-nn --release --bin train_mag_shots       # writes results/mag_shots.csv
 ```
 
 ## Docs
