@@ -4,12 +4,16 @@
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{natbib}
-\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\hypersetup{
+  colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue,
+  pdftitle={Clifford networks do not improve Ramsey sensitivity},
+  pdfauthor={Akshit}
+}
 
 \title{Clifford networks do not improve Ramsey sensitivity}
 
-\author{Akshit\thanks{Code: \url{https://github.com/akshitj11/clifford-based-network}.
-Correspondence: \texttt{akshitcasual1@gmail.com}.}}
+\author{Akshit\thanks{\texttt{akshitcasual1@gmail.com}.
+Code: \url{https://github.com/akshitj11/clifford-based-network}.}}
 
 \date{October 2026}
 
@@ -264,13 +268,15 @@ $\mathrm{Cl}(3,0)$ is not implemented.
 A 3D Bloch magnetometer on the same easy inverse would reproduce the clean-data tie.
 It becomes interesting only after the product-removal and shot-noise tests are restated in 3D.
 
-Reproduce with
-\texttt{cargo test} and the four release binaries
+{\raggedright
+Reproduce with \texttt{cargo test}.
+The four release binaries are
 \texttt{train\_magnetometer},
 \texttt{train\_mag\_misspec},
 \texttt{train\_mag\_efficiency},
-\texttt{train\_mag\_shots}.
+and \texttt{train\_mag\_shots}.
 CSVs land in \texttt{results/}.
+\par}
 
 The next measurement that could still change the story is not ``add $\mathrm{Cl}(3,0)$ and rerun the easy inverse.''
 It is a wrapped-fringe, multi-$T$ protocol, or a real vector-magnetometer log, with the same three estimators and the same refusal to call a noise-floor tie a sensing win.
